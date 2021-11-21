@@ -3,22 +3,39 @@ import { Player } from './player/player';
 import { Entity } from './player/entity';
 import { Vector2D } from './vector2d';
 import { EntityNotAssignedException } from '../exceptions/entity-not-assigned.exception';
+import config from '../config/config';
 
 export class Game {
   private readonly players: Record<string, Player> = {};
 
   constructor(private readonly id: string, private readonly io: Server) {
-    this.addMockPlayers();
+    //this.addMockPlayers();
 
     setInterval(() => {
-      io.to(id).emit('game-update', this.getPlayerEntities());
-    }, 1000);
+      const data = {
+        entities: this.getPlayerEntities(),
+      };
+
+      console.log(data.entities);
+
+      io.to(id).emit('game-update', data);
+    }, config.updateRate);
+  }
+
+  private random(): number {
+    return 100 + Math.random() * 200;
   }
 
   private addMockPlayers(amount: number = 10): void {
     for (let i = 0; i < amount; i++) {
-      const mockPlayer = new Player({ id: "aaaaaaaaa"+i } as Socket);
-      const entity = new Entity('mock-player-' + i, new Vector2D(100 * i, 100 * i), new Vector2D(20, 20), new Vector2D(0, 0));
+      const mockPlayer = new Player({ id: 'aaaaaaaaa' + i } as Socket);
+      const entity = new Entity(
+        'mock-player-' + i,
+        new Vector2D(500 * i, 500 * i),
+        new Vector2D(this.random(), this.random()),
+        new Vector2D(0, 0),
+        100 * this.random(),
+      );
 
       (mockPlayer as any).entity = entity;
       this.players[mockPlayer.getId()] = mockPlayer;
@@ -36,7 +53,7 @@ export class Game {
   public addPlayer(player: Player, name: string): void {
     this.players[player.getId()] = player;
 
-    const entity = new Entity(name, new Vector2D(), new Vector2D(), new Vector2D());
+    const entity = new Entity(name, new Vector2D(), new Vector2D(), new Vector2D(), 100);
 
     player.joinGame(this.id, entity);
   }

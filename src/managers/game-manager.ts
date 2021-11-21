@@ -24,14 +24,14 @@ export class GameManager implements GameManagerInterface {
   }
 
   public addPlayerToRandomGame(player: Player, name: string): void {
-    this.removePlayerFromGames(player);
+    this.removePlayerFromAllGames(player);
 
     const game = this.findOrCreateRandomGame();
 
     game.addPlayer(player, name);
   }
 
-  private removePlayerFromGames(player: Player) {
+  public removePlayerFromAllGames(player: Player): void {
     this.getGamesArray().forEach(game => {
       if (game.isPlayerIn(player)) {
         game.removePlayer(player);

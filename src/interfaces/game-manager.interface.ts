@@ -7,4 +7,6 @@ export interface GameManagerInterface {
   removeGame(gameId: string): void;
 
   addPlayerToRandomGame(player: Player, name: string): void;
+
+  removePlayerFromAllGames(player: Player): void;
 }
