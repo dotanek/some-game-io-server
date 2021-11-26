@@ -3,9 +3,11 @@ import { Socket } from "socket.io";
 import { Event } from "../enums/event.enum";
 import {GameManagerInterface} from "../interfaces/game-manager.interface";
 import {Player} from "../structures/player/player";
+import {PlayerDataReceivedModel} from "../models/player-data-received.model";
+import {GameNotAssignedException} from "../exceptions/game-not-assigned.exception";
 
 export class GameEventHandler implements EventHandlerInterface {
-  private player: Player;
+  private readonly player: Player;
 
   constructor(private readonly socket: Socket, private readonly gameManager: GameManagerInterface) {
     this.player = new Player(socket);
@@ -28,12 +30,25 @@ export class GameEventHandler implements EventHandlerInterface {
     }, 1000);
   }
 
-  private handlePlayerUpdate(data: any): void {
-    console.log(data);
+  private handlePlayerUpdate(data: PlayerDataReceivedModel): void {
+    try {
+      const game = this.player.getGame();
+
+      game.updatePlayerData(this.player, data);
+
+    } catch (error) {
+      if (error instanceof GameNotAssignedException) {
+        console.error(error.message);
+        console.error(error.stack);
+
+        this.socket.emit(Event.ERROR, 'An error has occured.');
+        /* Might terminate player connection here considering something went wrong with him */
+      }
+    }
   }
 
   private handleGameLeave(): void {
-    return;
+    this.gameManager.removePlayerFromAllGames(this.player);
   }
 
   private handleDisconnect(): void {

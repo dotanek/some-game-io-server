@@ -1,46 +1,16 @@
-import { Server, Socket } from 'socket.io';
+import { Server } from 'socket.io';
 import { Player } from './player/player';
 import { Entity } from './player/entity';
 import { Vector2D } from './vector2d';
 import { EntityNotAssignedException } from '../exceptions/entity-not-assigned.exception';
-import config from '../config/config';
+import {PlayerDataReceivedModel} from "../models/player-data-received.model";
+import {PlayerNotInGameException} from "../exceptions/player-not-in-game.exception";
+import {PlayerDataEmittedModel} from "../models/player-data-emitted.model";
 
 export class Game {
   private readonly players: Record<string, Player> = {};
 
-  constructor(private readonly id: string, private readonly io: Server) {
-    //this.addMockPlayers();
-
-    setInterval(() => {
-      const data = {
-        entities: this.getPlayerEntities(),
-      };
-
-      console.log(data.entities);
-
-      io.to(id).emit('game-update', data);
-    }, config.updateRate);
-  }
-
-  private random(): number {
-    return 100 + Math.random() * 200;
-  }
-
-  private addMockPlayers(amount: number = 10): void {
-    for (let i = 0; i < amount; i++) {
-      const mockPlayer = new Player({ id: 'aaaaaaaaa' + i } as Socket);
-      const entity = new Entity(
-        'mock-player-' + i,
-        new Vector2D(500 * i, 500 * i),
-        new Vector2D(this.random(), this.random()),
-        new Vector2D(0, 0),
-        100 * this.random(),
-      );
-
-      (mockPlayer as any).entity = entity;
-      this.players[mockPlayer.getId()] = mockPlayer;
-    }
-  }
+  constructor(private readonly id: string, private readonly io: Server) {}
 
   public getId(): string {
     return this.id;
@@ -55,13 +25,53 @@ export class Game {
 
     const entity = new Entity(name, new Vector2D(), new Vector2D(), new Vector2D(), 100);
 
-    player.joinGame(this.id, entity);
+    player.joinGame(this, entity);
   }
 
   public removePlayer(player: Player) {
-    player.leaveGame(this.id);
+    player.leaveGame(this);
 
     delete this.players[player.getId()];
+  }
+
+  public removeAllPlayers(): void {
+    this.getPlayersArray().forEach((player) => {
+      player.leaveGame(this);
+    });
+  }
+
+  public getPlayerCount(): number {
+    return this.getPlayersArray().length;
+  }
+
+  public updatePlayerData(player: Player, data: PlayerDataReceivedModel) {
+    if (!this.players[player.getId()]) {
+      throw new PlayerNotInGameException();
+    }
+
+    const entity = player.getEntity();
+
+    /* TODO add validation */
+    const { position, velocity } = data;
+
+    entity.update(position, velocity, entity.getMass());
+  }
+
+  public pushStateToPlayers(): void {
+    const entities = this.getPlayerEntities();
+
+    const data = {
+      entities: entities.map(entity => {
+        const name = entity.getName();
+        const position = entity.getApproxPosition();
+        const velocity = entity.getVelocity();
+        const mass = entity.getMass();
+
+        return { name, position, velocity, mass } as PlayerDataEmittedModel;
+      })
+    };
+
+    this.io.to(this.id).emit('game-update', data);
   }
 
   private getPlayersArray(): Player[] {

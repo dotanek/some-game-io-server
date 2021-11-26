@@ -1,9 +1,12 @@
 import {Socket} from "socket.io";
 import {Entity} from "./entity";
 import {EntityNotAssignedException} from "../../exceptions/entity-not-assigned.exception";
+import {Game} from "../game";
+import {GameNotAssignedException} from "../../exceptions/game-not-assigned.exception";
 
 export class Player {
   private entity?: Entity;
+  private game?: Game;
 
   constructor(private readonly socket: Socket) {}
 
@@ -12,7 +15,6 @@ export class Player {
   }
 
   public getEntity(): Entity {
-
     if (!this.entity) {
       throw new EntityNotAssignedException();
     }
@@ -20,23 +22,33 @@ export class Player {
     return this.entity;
   }
 
-  public joinGame(gameId: string, entity: Entity): void {
+  public getGame(): Game {
+    if (!this.game) {
+      throw new GameNotAssignedException();
+    }
+
+    return this.game;
+  }
+
+  public joinGame(game: Game, entity: Entity): void {
     this.entity = entity;
+    this.game = game;
 
-    this.connectToGame(gameId);
+    this.connectToGame(game);
   }
 
-  public leaveGame(gameId: string): void {
+  public leaveGame(game: Game): void {
     this.entity = undefined;
+    this.game = undefined;
 
-    this.disconnectFromGame(gameId);
+    this.disconnectFromGame(game);
   }
 
-  private connectToGame(gameId: string): void {
-    this.socket.join(gameId);
+  private connectToGame(game: Game): void {
+    this.socket.join(game.getId());
   }
 
-  private disconnectFromGame(gameId: string): void {
-    this.socket.leave(gameId);
+  private disconnectFromGame(game: Game): void {
+    this.socket.leave(game.getId());
   }
 }

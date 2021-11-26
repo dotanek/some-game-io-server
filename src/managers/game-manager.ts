@@ -1,13 +1,22 @@
-import {Game} from "../structures/game";
+import { Game } from '../structures/game';
 import { v4 as UUID } from 'uuid';
-import {Server} from "socket.io";
-import {GameManagerInterface} from "../interfaces/game-manager.interface";
-import {Player} from "../structures/player/player";
+import { Server } from 'socket.io';
+import { GameManagerInterface } from '../interfaces/game-manager.interface';
+import { Player } from '../structures/player/player';
+import config from '../config/config';
 
 export class GameManager implements GameManagerInterface {
   private readonly games: Record<string, Game> = {};
 
-  constructor(private readonly io: Server) {}
+  constructor(private readonly io: Server) {
+    setInterval(() => {
+      console.log('Active games: ' + Object.values(this.games).length);
+    }, 1000);
+
+    setInterval(() => {
+      this.pushGamesState();
+    }, config.updateRate);
+  }
 
   public createGame(): Game {
     const id = UUID();
@@ -18,9 +27,10 @@ export class GameManager implements GameManagerInterface {
     return game;
   }
 
-  public removeGame(gameId: string): void {
-    console.log(gameId);
-    return;
+  public removeGame(game: Game): void {
+    delete this.games[game.getId()];
+
+    game.removeAllPlayers();
   }
 
   public addPlayerToRandomGame(player: Player, name: string): void {
@@ -32,9 +42,13 @@ export class GameManager implements GameManagerInterface {
   }
 
   public removePlayerFromAllGames(player: Player): void {
-    this.getGamesArray().forEach(game => {
+    this.getGamesArray().forEach((game) => {
       if (game.isPlayerIn(player)) {
         game.removePlayer(player);
+
+        if (game.getPlayerCount() === 0) {
+          this.removeGame(game);
+        }
       }
     });
   }
@@ -51,5 +65,11 @@ export class GameManager implements GameManagerInterface {
     }
 
     return gamesArray[Math.floor(Math.random() * gamesArray.length)];
+  }
+
+  private pushGamesState(): void {
+    this.getGamesArray().forEach((game) => {
+      game.pushStateToPlayers();
+    });
   }
 }

@@ -4,7 +4,7 @@ import {Player} from "../structures/player/player";
 export interface GameManagerInterface {
   createGame(): Game;
 
-  removeGame(gameId: string): void;
+  removeGame(game: Game): void;
 
   addPlayerToRandomGame(player: Player, name: string): void;
 
