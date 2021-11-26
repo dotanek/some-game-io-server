@@ -1,10 +1,11 @@
-import { EventHandlerInterface } from "../interfaces/event-handler.interface";
-import { Socket } from "socket.io";
-import { Event } from "../enums/event.enum";
-import {GameManagerInterface} from "../interfaces/game-manager.interface";
-import {Player} from "../structures/player/player";
-import {PlayerDataReceivedModel} from "../models/player-data-received.model";
-import {GameNotAssignedException} from "../exceptions/game-not-assigned.exception";
+import { EventHandlerInterface } from '../interfaces/event-handler.interface';
+import { Socket } from 'socket.io';
+import { Event } from '../enums/event.enum';
+import { GameManagerInterface } from '../interfaces/game-manager.interface';
+import { Player } from '../structures/player/player';
+import { PlayerDataReceivedModel } from '../models/player-data-received.model';
+import { GameNotAssignedException } from '../exceptions/game-not-assigned.exception';
+import { ValidationFailedException } from '../exceptions/validation-failed.exception';
 
 export class GameEventHandler implements EventHandlerInterface {
   private readonly player: Player;
@@ -24,7 +25,7 @@ export class GameEventHandler implements EventHandlerInterface {
     this.gameManager.addPlayerToRandomGame(this.player, name);
 
     // TODO ARTIFICIAL DELAY REMOVE LATER
-    setTimeout(()=> {
+    setTimeout(() => {
       console.log(`Client with id '${this.socket.id}' joined game as '${name}'.`);
       callback();
     }, 1000);
@@ -35,14 +36,11 @@ export class GameEventHandler implements EventHandlerInterface {
       const game = this.player.getGame();
 
       game.updatePlayerData(this.player, data);
-
     } catch (error) {
       if (error instanceof GameNotAssignedException) {
-        console.error(error.message);
-        console.error(error.stack);
-
-        this.socket.emit(Event.ERROR, 'An error has occured.');
-        /* Might terminate player connection here considering something went wrong with him */
+        this.handleError(error);
+      } else if (error instanceof ValidationFailedException) {
+        this.handleError(error);
       }
     }
   }
@@ -55,5 +53,12 @@ export class GameEventHandler implements EventHandlerInterface {
     this.gameManager.removePlayerFromAllGames(this.player);
 
     console.log(`Client with id '${this.socket.id}' disconnected.`);
+  }
+
+  private handleError(error: Error): void {
+    console.error(error.message);
+    console.error(error.stack);
+
+    this.socket.emit(Event.ERROR, 'An error has occured.');
   }
 }

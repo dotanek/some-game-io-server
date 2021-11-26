@@ -1,6 +1,7 @@
 // This represents in-game player properties.
 import { Vector2D } from '../vector2d';
-import config from "../../config/config";
+import config from '../../config/config';
+import { performance } from 'perf_hooks';
 
 export class Entity {
   private lastUpdate: number = performance.now();
@@ -39,7 +40,6 @@ export class Entity {
 
   public getApproxPosition(): Vector2D {
     const secondsPassed = (performance.now() - this.lastUpdate) / 1000;
-    console.log(secondsPassed);
 
     let x = this.position.x + this.velocity.x * secondsPassed;
     let y = this.position.y + this.velocity.y * secondsPassed;
@@ -56,6 +56,20 @@ export class Entity {
       y = config.world.height;
     }
 
-    return new Vector2D(x,y);
+    return new Vector2D(x, y);
+  }
+
+  private updatePosition(position: Vector2D) {
+    const { x, y } = position;
+
+    this.position.x = x;
+    this.position.y = y;
+  }
+
+  private updateVelocity(velocity: Vector2D) {
+    const { x, y } = velocity;
+
+    this.velocity.x = x;
+    this.velocity.y = y;
   }
 }

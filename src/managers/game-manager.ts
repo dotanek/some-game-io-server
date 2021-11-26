@@ -11,11 +11,11 @@ export class GameManager implements GameManagerInterface {
   constructor(private readonly io: Server) {
     setInterval(() => {
       console.log('Active games: ' + Object.values(this.games).length);
-    }, 1000);
+    }, 10000);
 
     setInterval(() => {
       this.pushGamesState();
-    }, config.updateRate);
+    }, config.refreshRate);
   }
 
   public createGame(): Game {
