@@ -2,16 +2,16 @@ import { EventHandlerInterface } from '../interfaces/event-handler.interface';
 import { Socket } from 'socket.io';
 import { Event } from '../enums/event.enum';
 import { GameManagerInterface } from '../interfaces/game-manager.interface';
-import { Player } from '../structures/player/player';
+import { User } from '../structures/user';
 import { PlayerDataReceivedModel } from '../models/player-data-received.model';
 import { GameNotAssignedException } from '../exceptions/game-not-assigned.exception';
 import { ValidationFailedException } from '../exceptions/validation-failed.exception';
 
-export class GameEventHandler implements EventHandlerInterface {
-  private readonly player: Player;
+export class UserEventHandler implements EventHandlerInterface {
+  private readonly user: User;
 
   constructor(private readonly socket: Socket, private readonly gameManager: GameManagerInterface) {
-    this.player = new Player(socket);
+    this.user = new User(socket);
   }
 
   public initEventListeners(): void {
@@ -22,7 +22,7 @@ export class GameEventHandler implements EventHandlerInterface {
   }
 
   private handleGameJoin(name: string, callback: () => void): void {
-    this.gameManager.addPlayerToRandomGame(this.player, name);
+    this.gameManager.addUserToRandomGame(this.user, name);
 
     // TODO ARTIFICIAL DELAY REMOVE LATER
     setTimeout(() => {
@@ -33,9 +33,7 @@ export class GameEventHandler implements EventHandlerInterface {
 
   private handlePlayerUpdate(data: PlayerDataReceivedModel): void {
     try {
-      const game = this.player.getGame();
-
-      game.updatePlayerData(this.player, data);
+      this.user.updateGame(data);
     } catch (error) {
       if (error instanceof GameNotAssignedException) {
         this.handleError(error);
@@ -46,11 +44,11 @@ export class GameEventHandler implements EventHandlerInterface {
   }
 
   private handleGameLeave(): void {
-    this.gameManager.removePlayerFromAllGames(this.player);
+    this.user.leaveGame();
   }
 
   private handleDisconnect(): void {
-    this.gameManager.removePlayerFromAllGames(this.player);
+    this.user.leaveGame();
 
     console.log(`Client with id '${this.socket.id}' disconnected.`);
   }

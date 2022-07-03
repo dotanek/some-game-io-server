@@ -1,16 +1,20 @@
 import { Server } from 'socket.io';
-import { Player } from './player/player';
-import { Entity } from './player/entity';
+import { User } from './user';
+import { Entity } from './entity';
 import { Vector2D } from './vector2d';
-import { EntityNotAssignedException } from '../exceptions/entity-not-assigned.exception';
 import { PlayerDataReceivedModel } from '../models/player-data-received.model';
-import { PlayerNotInGameException } from '../exceptions/player-not-in-game.exception';
+import { UserNotInGameException } from '../exceptions/user-not-in-game.exception';
 import { EntityPositionValidator } from '../validators/entity-position.validator';
 import { ValidationFailedException } from '../exceptions/validation-failed.exception';
 import { DataEmittedModel } from '../models/data-emitted.model';
 import config from '../config/config';
+import { generateRandomPosition } from '../utils/vector.util';
 
 const positionValidator = new EntityPositionValidator();
+
+class Player {
+  constructor(public readonly user: User, public readonly entity: Entity) {}
+}
 
 export class Game {
   private readonly players: Record<string, Player> = {};
@@ -21,31 +25,24 @@ export class Game {
     return this.id;
   }
 
-  public isPlayerIn(player: Player) {
+  public isPlayerIn(player: User) {
     return this.players[player.getId()] !== undefined;
   }
 
-  public addPlayer(player: Player, name: string): void {
-    this.players[player.getId()] = player;
+  public addPlayer(user: User, name: string): void {
+    const position = generateRandomPosition(0, 0, config.world.width, config.world.height);
 
-    //const position = this.generateRandomPosition(0, 0, config.world.width, config.world.height);
+    const entity = new Entity(name, position, new Vector2D(0,0), new Vector2D(0,0), config.minimalMass);
+    console.log(position);
 
-    const mass = config.minimalMass;
+    this.players[user.getId()] = new Player(user, entity);
 
-    const entity = new Entity(name, new Vector2D(), new Vector2D(), new Vector2D(), mass);
-
-    player.joinGame(this, entity);
-  }
-
-  public removePlayer(player: Player) {
-    player.leaveGame(this);
-
-    delete this.players[player.getId()];
+    user.joinGame(this);
   }
 
   public removeAllPlayers(): void {
     this.getPlayersArray().forEach((player) => {
-      player.leaveGame(this);
+      player.user.leaveGame();
     });
   }
 
@@ -53,12 +50,12 @@ export class Game {
     return this.getPlayersArray().length;
   }
 
-  public updatePlayerData(player: Player, data: PlayerDataReceivedModel) {
-    if (!this.players[player.getId()]) {
-      throw new PlayerNotInGameException();
-    }
+  public updatePlayerData(userId: string, data: PlayerDataReceivedModel) {
+    const player = this.players[userId];
 
-    const entity = player.getEntity();
+    if (!player) {
+      throw new UserNotInGameException();
+    }
 
     /* TODO add validation */
     const { position, velocity } = data;
@@ -67,7 +64,7 @@ export class Game {
       throw new ValidationFailedException('Forbidden entity position');
     }
 
-    entity.update(position, velocity, entity.getMass());
+    player.entity.update(position, velocity, player.entity.getMass());
   }
 
   public pushStateToPlayers(): void {
@@ -97,24 +94,19 @@ export class Game {
 
     this.getPlayersArray().forEach((player) => {
       try {
-        entities.push(player.getEntity());
+        entities.push(player.entity);
       } catch (error) {
-        if (error instanceof EntityNotAssignedException) {
+        if (error instanceof Error) {
+          /* Might terminate player connection here considering something went wrong with him */
+
           console.error(error.message);
           console.error(error.stack);
-
-          /* Might terminate player connection here considering something went wrong with him */
+        } else {
+          console.error(error);
         }
       }
     });
 
     return entities;
-  }
-
-  private generateRandomPosition(xStart: number, yStart: number, xEnd: number, yEnd: number): Vector2D {
-    const x = xStart + Math.random() * xEnd;
-    const y = yStart + Math.random() * yEnd;
-
-    return new Vector2D(x, y);
   }
 }

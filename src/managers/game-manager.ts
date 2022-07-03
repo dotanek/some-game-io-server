@@ -2,7 +2,7 @@ import { Game } from '../structures/game';
 import { v4 as UUID } from 'uuid';
 import { Server } from 'socket.io';
 import { GameManagerInterface } from '../interfaces/game-manager.interface';
-import { Player } from '../structures/player/player';
+import { User } from '../structures/user';
 import config from '../config/config';
 
 export class GameManager implements GameManagerInterface {
@@ -33,24 +33,10 @@ export class GameManager implements GameManagerInterface {
     game.removeAllPlayers();
   }
 
-  public addPlayerToRandomGame(player: Player, name: string): void {
-    this.removePlayerFromAllGames(player);
-
+  public addUserToRandomGame(user: User, name: string): void {
     const game = this.findOrCreateRandomGame();
 
-    game.addPlayer(player, name);
-  }
-
-  public removePlayerFromAllGames(player: Player): void {
-    this.getGamesArray().forEach((game) => {
-      if (game.isPlayerIn(player)) {
-        game.removePlayer(player);
-
-        if (game.getPlayerCount() === 0) {
-          this.removeGame(game);
-        }
-      }
-    });
+    game.addPlayer(user, name);
   }
 
   private getGamesArray(): Game[] {
