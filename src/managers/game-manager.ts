@@ -10,12 +10,10 @@ export class GameManager implements GameManagerInterface {
 
   constructor(private readonly io: Server) {
     setInterval(() => {
-      console.log('Active games: ' + Object.values(this.games).length);
-    }, 10000);
+      this.cleanEmptyGames();
 
-    setInterval(() => {
-      this.pushGamesState();
-    }, config.refreshRate);
+      console.log('Active games: ' + Object.values(this.games).length);
+    }, config.gameManager.refreshRate);
   }
 
   public createGame(): Game {
@@ -24,13 +22,15 @@ export class GameManager implements GameManagerInterface {
 
     this.games[id] = game;
 
+    game.start(config.game.refreshRate);
+
     return game;
   }
 
   public removeGame(game: Game): void {
     delete this.games[game.getId()];
 
-    game.removeAllPlayers();
+    game.destroy();
   }
 
   public addUserToRandomGame(user: User, name: string): void {
@@ -53,9 +53,13 @@ export class GameManager implements GameManagerInterface {
     return gamesArray[Math.floor(Math.random() * gamesArray.length)];
   }
 
-  private pushGamesState(): void {
-    this.getGamesArray().forEach((game) => {
-      game.pushStateToPlayers();
-    });
+  private cleanEmptyGames(): void {
+    const gamesArray: Game[] = this.getGamesArray();
+
+    for (const game of gamesArray) {
+      if (game.getPlayerCount() === 0) {
+        this.removeGame(game);
+      }
+    }
   }
 }

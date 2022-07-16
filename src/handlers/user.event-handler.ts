@@ -1,13 +1,18 @@
 import { EventHandlerInterface } from '../interfaces/event-handler.interface';
 import { Socket } from 'socket.io';
-import { Event } from '../enums/event.enum';
+import { SocketEvent } from '../enums/socket-event.enum';
 import { GameManagerInterface } from '../interfaces/game-manager.interface';
 import { User } from '../structures/user';
 import { PlayerDataReceivedModel } from '../models/player-data-received.model';
 import { GameNotAssignedException } from '../exceptions/game-not-assigned.exception';
 import { ValidationFailedException } from '../exceptions/validation-failed.exception';
+import eventEmitter from '../providers/event-emitter.provider';
+import { InternalEvent } from '../enums/internal-event.enum';
+import { GameLeftEvent } from '../events/game-left.event';
 
-export class UserEventHandler implements EventHandlerInterface {
+export interface UserEventHandlerInterface extends EventHandlerInterface {}
+
+export class UserEventHandler implements UserEventHandlerInterface {
   private readonly user: User;
 
   constructor(private readonly socket: Socket, private readonly gameManager: GameManagerInterface) {
@@ -15,10 +20,10 @@ export class UserEventHandler implements EventHandlerInterface {
   }
 
   public initEventListeners(): void {
-    this.socket.on(Event.GAME_JOIN, this.handleGameJoin.bind(this));
-    this.socket.on(Event.GAME_LEAVE, this.handleGameLeave.bind(this));
-    this.socket.on(Event.DISCONNECT, this.handleDisconnect.bind(this));
-    this.socket.on(Event.PLAYER_UPDATE, this.handlePlayerUpdate.bind(this));
+    this.socket.on(SocketEvent.GAME_JOIN, this.handleGameJoin.bind(this));
+    this.socket.on(SocketEvent.GAME_LEAVE, this.handleGameLeave.bind(this));
+    this.socket.on(SocketEvent.DISCONNECT, this.handleDisconnect.bind(this));
+    this.socket.on(SocketEvent.PLAYER_UPDATE, this.handlePlayerUpdate.bind(this));
   }
 
   private handleGameJoin(name: string, callback: () => void): void {
@@ -48,7 +53,12 @@ export class UserEventHandler implements EventHandlerInterface {
   }
 
   private handleDisconnect(): void {
-    this.user.leaveGame();
+    if (this.user.hasGame()) {
+      const gameId = this.user.getGame().getId();
+      const userId = this.user.getId();
+
+      eventEmitter.emit(InternalEvent.GAME_LEFT, new GameLeftEvent(gameId, userId));
+    }
 
     console.log(`Client with id '${this.socket.id}' disconnected.`);
   }
@@ -57,6 +67,6 @@ export class UserEventHandler implements EventHandlerInterface {
     console.error(error.message);
     console.error(error.stack);
 
-    this.socket.emit(Event.ERROR, 'An error has occured.');
+    this.socket.emit(SocketEvent.ERROR, 'An error has occurred.');
   }
 }

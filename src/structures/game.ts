@@ -9,6 +9,8 @@ import { ValidationFailedException } from '../exceptions/validation-failed.excep
 import { DataEmittedModel } from '../models/data-emitted.model';
 import config from '../config/config';
 import { generateRandomPosition } from '../utils/vector.util';
+import { GameStoppedException } from '../exceptions/game-stopped.exception';
+import { GameEventHandler } from '../handlers/game.event-handler';
 
 const positionValidator = new EntityPositionValidator();
 
@@ -17,9 +19,31 @@ class Player {
 }
 
 export class Game {
+  private readonly gameEventHandler = new GameEventHandler(this);
   private readonly players: Record<string, Player> = {};
+  private refreshTimer?: NodeJS.Timer;
 
-  constructor(private readonly id: string, private readonly io: Server) {}
+  constructor(private readonly id: string, private readonly io: Server) {
+    this.gameEventHandler.initEventListeners();
+  }
+
+  public start(refreshRate: number): void {
+    this.refreshTimer = setInterval(() => this.pushStateToPlayers(), refreshRate);
+  }
+
+  public stop(): void {
+    if (!this.refreshTimer) {
+      throw new GameStoppedException();
+    }
+
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = undefined;
+  }
+
+  public destroy(): void {
+    this.removeAllPlayers();
+    this.stop();
+  }
 
   public getId(): string {
     return this.id;
@@ -32,18 +56,12 @@ export class Game {
   public addPlayer(user: User, name: string): void {
     const position = generateRandomPosition(0, 0, config.world.width, config.world.height);
 
-    const entity = new Entity(name, position, new Vector2D(0,0), new Vector2D(0,0), config.minimalMass);
+    const entity = new Entity(name, position, new Vector2D(0, 0), new Vector2D(0, 0), config.minimalMass);
     console.log(position);
 
     this.players[user.getId()] = new Player(user, entity);
 
     user.joinGame(this);
-  }
-
-  public removeAllPlayers(): void {
-    this.getPlayersArray().forEach((player) => {
-      player.user.leaveGame();
-    });
   }
 
   public getPlayerCount(): number {
@@ -67,7 +85,15 @@ export class Game {
     player.entity.update(position, velocity, player.entity.getMass());
   }
 
-  public pushStateToPlayers(): void {
+  public removePlayerById(id: string): void {
+    const player = this.players[id];
+
+    player.user.leaveGame();
+
+    delete this.players[id];
+  }
+
+  private pushStateToPlayers(): void {
     const entities = this.getPlayerEntities();
     const data: DataEmittedModel = {
       entities: {},
@@ -83,6 +109,12 @@ export class Game {
     });
 
     this.io.to(this.id).emit('game-update', data);
+  }
+
+  private removeAllPlayers(): void {
+    this.getPlayersArray().forEach((player) => {
+      player.user.leaveGame();
+    });
   }
 
   private getPlayersArray(): Player[] {
