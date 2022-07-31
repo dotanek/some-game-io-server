@@ -1,7 +1,7 @@
 import express from "express";
 import { Server } from "socket.io";
-import { Event } from "./enums/event.enum";
-import { GameEventHandler } from "./handlers/game.event-handler";
+import { SocketEvent } from "./enums/socket-event.enum";
+import { UserEventHandler } from "./handlers/user.event-handler";
 import { createServer } from "http";
 import config from "./config/config";
 import {GameManager} from "./managers/game-manager";
@@ -17,9 +17,9 @@ const port = config.port;
 
 const gameManager = new GameManager(io);
 
-io.on(Event.CONNECTION, (socket) => {
-  const gameEventHandler = new GameEventHandler(socket, gameManager);
-  gameEventHandler.initEventListeners();
+io.on(SocketEvent.CONNECTION, (socket) => {
+  const userEventHandler = new UserEventHandler(socket, gameManager);
+  userEventHandler.initEventListeners();
 
   console.log(`Client with id '${socket.id}' connected.`);
 });

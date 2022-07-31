@@ -2,7 +2,7 @@ import { Game } from '../structures/game';
 import { v4 as UUID } from 'uuid';
 import { Server } from 'socket.io';
 import { GameManagerInterface } from '../interfaces/game-manager.interface';
-import { Player } from '../structures/player/player';
+import { User } from '../structures/user';
 import config from '../config/config';
 
 export class GameManager implements GameManagerInterface {
@@ -10,12 +10,10 @@ export class GameManager implements GameManagerInterface {
 
   constructor(private readonly io: Server) {
     setInterval(() => {
-      console.log('Active games: ' + Object.values(this.games).length);
-    }, 10000);
+      this.cleanEmptyGames();
 
-    setInterval(() => {
-      this.pushGamesState();
-    }, config.refreshRate);
+      console.log('Active games: ' + Object.values(this.games).length);
+    }, config.gameManager.refreshRate);
   }
 
   public createGame(): Game {
@@ -24,33 +22,21 @@ export class GameManager implements GameManagerInterface {
 
     this.games[id] = game;
 
+    game.start(config.game.refreshRate);
+
     return game;
   }
 
   public removeGame(game: Game): void {
     delete this.games[game.getId()];
 
-    game.removeAllPlayers();
+    game.destroy();
   }
 
-  public addPlayerToRandomGame(player: Player, name: string): void {
-    this.removePlayerFromAllGames(player);
-
+  public addUserToRandomGame(user: User, name: string): void {
     const game = this.findOrCreateRandomGame();
 
-    game.addPlayer(player, name);
-  }
-
-  public removePlayerFromAllGames(player: Player): void {
-    this.getGamesArray().forEach((game) => {
-      if (game.isPlayerIn(player)) {
-        game.removePlayer(player);
-
-        if (game.getPlayerCount() === 0) {
-          this.removeGame(game);
-        }
-      }
-    });
+    game.addPlayer(user, name);
   }
 
   private getGamesArray(): Game[] {
@@ -67,9 +53,13 @@ export class GameManager implements GameManagerInterface {
     return gamesArray[Math.floor(Math.random() * gamesArray.length)];
   }
 
-  private pushGamesState(): void {
-    this.getGamesArray().forEach((game) => {
-      game.pushStateToPlayers();
-    });
+  private cleanEmptyGames(): void {
+    const gamesArray: Game[] = this.getGamesArray();
+
+    for (const game of gamesArray) {
+      if (game.getPlayerCount() === 0) {
+        this.removeGame(game);
+      }
+    }
   }
 }

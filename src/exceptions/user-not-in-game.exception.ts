@@ -1,4 +1,4 @@
-export class PlayerNotInGameException extends Error {
+export class UserNotInGameException extends Error {
   constructor() {
     super('Player does not belong to referenced game');
   }

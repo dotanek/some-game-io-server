@@ -1,7 +1,8 @@
-// This represents in-game player properties.
-import { Vector2D } from '../vector2d';
-import config from '../../config/config';
+// This represents in-game player entity properties.
+
 import { performance } from 'perf_hooks';
+import { Vector2D } from './vector2d';
+import config from '../config/config';
 
 export class Entity {
   private lastUpdate: number = performance.now();

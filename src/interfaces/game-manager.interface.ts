@@ -1,12 +1,10 @@
-import {Game} from "../structures/game";
-import {Player} from "../structures/player/player";
+import { Game } from '../structures/game';
+import { User } from '../structures/user';
 
 export interface GameManagerInterface {
   createGame(): Game;
 
   removeGame(game: Game): void;
 
-  addPlayerToRandomGame(player: Player, name: string): void;
-
-  removePlayerFromAllGames(player: Player): void;
+  addUserToRandomGame(user: User, name: string): void;
 }
