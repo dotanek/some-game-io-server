@@ -26,7 +26,7 @@ export class User {
 
   public joinGame(game: Game): void {
     if (this.hasGame()) {
-      throw new GameNotAssignedException()
+      throw new GameNotAssignedException();
     }
 
     this.game = game;
